@@ -141,40 +141,14 @@ energy:
 - **Usage Analytics**: Daily/weekly energy consumption reports
 - **Device Control**: Automatically control appliances based on consumption
 
-## 📁 Project Structure
-
-```
-├── esp32-energy-meter.yaml          # Main ESPHome configuration
-├── docs/                            # Documentation
-│   ├── hardware-setup.md           # Hardware assembly guide
-│   ├── configuration-guide.md      # Configuration tutorial
-│   ├── troubleshooting.md          # Common issues and solutions
-│   └── api-reference.md            # Sensor reference
-├── wiki/                           # Wiki pages
-│   ├── Home-Assistant-Integration.md
-│   ├── Energy-Monitoring-Setup.md
-│   └── Advanced-Features.md
-└── LICENSE                         # Creative Commons license
-```
-
 ## 📖 Documentation
 
 - **[Hardware Setup Guide](docs/hardware-setup.md)** - Complete assembly instructions
 - **[Configuration Guide](docs/configuration-guide.md)** - ESPHome configuration tutorial
-- **[Home Assistant Integration](wiki/Home-Assistant-Integration.md)** - HA setup and usage
+- **[Home Assistant Integration](docs/Home-Assistant-Integration.md)** - HA setup and usage
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[API Reference](docs/api-reference.md)** - Complete sensor documentation
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
-
-### How to Contribute
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+- **[Advanced Features Guide](docs/Advanced-Features.md)** - Advanced customization options
 
 ## ⚠️ Safety Warning
 

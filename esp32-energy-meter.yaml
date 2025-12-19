@@ -1,0 +1,408 @@
+esphome:
+  name: esp32-energy-meter
+  friendly_name: ESP32 Energy Meter
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "CHANGE_THIS_TO_YOUR_API_KEY"
+
+ota:
+  - platform: esphome
+    password: "CHANGE_THIS_OTA_PASSWORD"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  manual_ip:
+    # Set this to the IP of the ESP
+    static_ip: 192.168.1.XXX
+    # Set this to the IP address of the router. Often ends with .1
+    gateway: 192.168.1.1
+    # The subnet of the network. 255.255.255.0 works for most home networks.
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "ESP32-Energy-Meter Fallback Hotspot"
+    password: "CHANGE_THIS_PASSWORD"
+
+captive_portal:
+    
+#JSY energy meter protocol
+uart:
+  id: mod_bus
+  tx_pin: 17
+  rx_pin: 16
+  baud_rate: 4800
+  stop_bits: 1
+
+modbus:
+  id: modbus1
+
+modbus_controller:
+  - id: jsymk
+    #modbus device address
+    address: 0x1
+    modbus_id: modbus1
+    update_interval: 3s
+    command_throttle: 50ms
+
+i2c:
+  sda: 21
+  scl: 22
+
+font:
+  - file:
+      type: gfonts
+      family: Baloo+Bhaijaan+2
+      weight: 500
+    id: baloo_18_500
+    size: 18
+
+  - file:
+      type: gfonts
+      family: Baloo+Bhaijaan+2
+      weight: 700
+    id: baloo_32_700
+    size: 32
+  
+  - file:
+      type: gfonts
+      family: Baloo+Bhaijaan+2
+      weight: 700
+    id: baloo_18_700
+    size: 18
+
+  - file: "gfonts://Material+Symbols+Outlined"
+    id: icons_18
+    size: 18
+    glyphs: ["\ue63e", "\ue648"] # mdi-wifi, mdi-wifi-off
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    id: oled
+    rotation: 180°
+    update_interval: 3s
+    lambda: !lambda |-
+      // Time integration for burn-in protection
+      time_t now = id(homeassistant_time).now().timestamp;
+      
+      // Clear screen every 30 minutes to prevent OLED burn-in
+      if (now % 1800 == 0) {  // Every 30 minutes
+        it.clear();
+        return;  // Exit early to prevent drawing during clear
+      }
+      
+      // Clear screen before drawing new content
+      it.clear();
+      
+      // Energy Meter title
+      it.print(-1, -4, id(baloo_18_500), "Energy Meter");
+
+      // WiFi status
+      if(id(connection_status).state == 1) {
+        it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue63e");        
+      }
+      else {
+        it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue648");
+      }
+
+      // Power display
+      it.printf(it.get_width()/2, 38, id(baloo_32_700), TextAlign::CENTER, "%.1f W", id(power2).state);
+
+      // Voltage (slightly below screen due to rotation)
+      it.printf(0, it.get_height() + 12, id(baloo_18_700), TextAlign::BOTTOM_LEFT, "%.1f V", id(voltage2).state);
+
+      // Current (slightly below screen due to rotation)
+      it.printf(it.get_width(), it.get_height() + 12, id(baloo_18_700), TextAlign::BOTTOM_RIGHT, "%.1f A", id(current2).state);
+
+
+binary_sensor:
+# Connection status - enhanced WiFi signal strength check
+  - platform: template
+    name: "WiFi Connection Status"
+    id: connection_status
+    lambda: !lambda
+      return id(wifi_signal_strength).state > -70;  // Connected if signal strength > -70 dBm
+
+
+sensor:
+# WiFi Signal Strength sensor for accurate connection monitoring
+  - platform: wifi_signal
+    name: "WiFi Signal Strength"
+    id: wifi_signal_strength
+    update_interval: 10s
+    unit_of_measurement: "dBm"
+
+# First channel voltage
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: voltage1
+    name: "Voltage"
+    icon: mdi:alpha-v-box
+    device_class: energy
+    address: 0x0048
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# First channel current
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: current1
+    name: "Current 1"
+    icon: mdi:current-ac
+    device_class: energy
+    address: 0x0049
+    unit_of_measurement: "A"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# First channel power
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: power1
+    name: "Power 1"
+    icon: mdi:lightning-bolt
+    device_class: energy
+    address: 0x004A
+    unit_of_measurement: "W"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# First channel energy
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: energy1
+    name: "Energy 1"
+    icon: mdi:lightning-bolt
+    device_class: energy
+    address: 0x004B
+    unit_of_measurement: "kWh"
+    state_class: total
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# First channel power factor
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: powerfactor1
+    name: "Power Factor 1"
+    icon: mdi:alpha-p-box
+    device_class: energy
+    address: 0x004C
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.001
+    register_count: 1
+    response_size: 4
+
+# First channel negative active energy
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: negativeactiveenergy1
+    #name: "Negative Active Energy 1"
+    icon: mdi:lightning-bolt
+    device_class: energy
+    address: 0x004D
+    unit_of_measurement: "kWh"
+    state_class: total
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# First channel current direction
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: direction1
+    #name: "Current Direction 1"
+    icon: mdi:arrow-right
+    device_class: energy
+    address: 0x004E
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 0
+    bitmask: 0X01000000
+    filters:
+      - multiply: 1
+    register_count: 1
+    response_size: 4
+
+# Frequency
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: frequency
+    name: "Frequency"
+    icon: mdi:sine-wave
+    device_class: energy
+    address: 0x004F
+    unit_of_measurement: "Hz"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    register_count: 1
+    response_size: 4
+
+# Second channel voltage
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: voltage2
+    #name: "Voltage 2"
+    icon: mdi:alpha-v-box
+    device_class: energy
+    address: 0x0050
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# Second channel current
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: current2
+    name: "Current 2"
+    icon: mdi:current-ac
+    device_class: energy
+    address: 0x0051
+    unit_of_measurement: "A"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# Second channel power
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: power2
+    name: "Power 2"
+    icon: mdi:lightning-bolt
+    device_class: energy
+    address: 0x0052
+    unit_of_measurement: "W"
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# Second channel energy
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: energy2
+    name: "Energy 2"
+    icon: mdi:lightning-bolt
+    device_class: energy
+    address: 0x0053
+    unit_of_measurement: "kWh"
+    state_class: total
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# Second channel power factor
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: powerfactor2
+    name: "Power Factor 2"
+    icon: mdi:alpha-p-box
+    device_class: energy
+    address: 0x0054
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.001
+    register_count: 1
+    response_size: 4
+
+# Second channel negative active energy
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: negativeactiveenergy2
+    #name: "Negative Active Energy 2"
+    icon: mdi:lightning-bolt
+    device_class: energy
+    address: 0x0055
+    unit_of_measurement: "kWh"
+    state_class: total
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.0001
+    register_count: 1
+    response_size: 4
+
+# Second channel current direction
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: direction2
+    #name: "Current Direction 2"
+    icon: mdi:arrow-right
+    device_class: energy
+    address: 0x004E
+    register_type: holding
+    value_type: U_DWORD
+    accuracy_decimals: 0
+    bitmask: 0X00010000
+    filters:
+      - multiply: 1
+    register_count: 1
+    response_size: 4

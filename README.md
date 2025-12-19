@@ -1,4 +1,5 @@
 # ESP32 Smart Energy Meter with OLED Display
+![ESP32 Energy Meter](docs/FLGRJWZM23B7UJV.jpg)
 
 ![ESP32 Energy Meter](https://img.shields.io/badge/ESP32-Compatible-green)
 ![Home Assistant](https://img.shields.io/badge/Home-Assistant-blue)

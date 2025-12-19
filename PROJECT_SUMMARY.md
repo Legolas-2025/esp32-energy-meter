@@ -35,10 +35,9 @@ esp32-energy-meter/
 │   ├── 📄 hardware-setup.md           # Complete hardware assembly guide
 │   ├── 📄 configuration-guide.md      # ESPHome configuration tutorial
 │   ├── 📄 troubleshooting.md          # Comprehensive troubleshooting guide
-│   └── 📄 api-reference.md            # Complete API and entity reference
-└── 📁 wiki/                           # Wiki pages for advanced topics
-    ├── 📄 Home-Assistant-Integration.md # HA setup and usage guide
-    └── 📄 Advanced-Features.md         # Customization and advanced features
+│   ├── 📄 api-reference.md            # Complete API and entity reference
+|   ├── 📄 Home-Assistant-Integration.md # HA setup and usage guide
+|   └── 📄 Advanced-Features.md         # Customization and advanced features
 ```
 
 ## 🔧 Technical Specifications

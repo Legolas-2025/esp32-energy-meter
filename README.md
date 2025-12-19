@@ -39,10 +39,11 @@ The original project provided the foundation for this enhanced version, which ad
 ## 📋 Hardware Requirements
 
 ### Main Components
-- **ESP32 Development Board** (any ESP32 variant)
-- **JSY Energy Meter** with Modbus RTU over RS485
+- **ESP32 Wemos D1 Mini** (recommended - compact ESP32 development board)
+- **JSY-MK-194G Energy Meter** with Modbus RTU over RS485
 - **SSD1306 128x64 OLED Display** (I2C)
 - **RS485 to TTL Converter Module** (for Modbus communication)
+- **Meanwell APV-8-5 5V 8W Power Supply** (for system power)
 
 ### Optional Components
 - **3D Printed Enclosure** (see hardware guide)
@@ -52,7 +53,7 @@ The original project provided the foundation for this enhanced version, which ad
 ### Wiring Requirements
 - **UART Pins**: TX (GPIO17), RX (GPIO16)
 - **I2C Pins**: SDA (GPIO21), SCL (GPIO22)
-- **Power Supply**: 3.3V and 5V rails
+- **Power Supply**: 5V external supply to ESP32 +5V pin, ESP32 3.3V powers all peripherals
 
 ## 🔧 Installation & Setup
 

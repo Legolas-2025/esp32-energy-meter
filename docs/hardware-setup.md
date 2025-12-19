@@ -22,9 +22,90 @@
 | Current Clamps | Non-invasive measurement | For measuring current without direct connection |
 | Voltage Transformers | Voltage isolation | If voltage measurement is required |
 
+## 🏭 Original Author's Recommended Hardware
+
+The following specific components were tested and recommended by Giovanni Aggiustatutto in the original project:
+
+### Recommended Hardware List
+| Component | Model/Specification | Source | Purpose |
+|-----------|-------------------|--------|---------|
+| **Energy Meter** | JSY-MK-194G | [AliExpress](https://www.aliexpress.com/item/1005007369940517.html) | Main measurement device with Modbus RTU |
+| **ESP32 Board** | ESP32 Wemos D1 Mini | General ESP32 supplier | Main controller board |
+| **Power Supply** | Meanwell APV-8-5 5V 8W | Electronics supplier | 5V power supply for the system |
+| **OLED Display** | SSD1306 I2C 0.96" | General electronics supplier | Local display for readings |
+
+### Hardware Details
+
+#### JSY-MK-194G Energy Meter
+- **Protocol**: Modbus RTU over RS485
+- **Channels**: Dual channel measurement capability
+- **Accuracy**: High precision power monitoring
+- **Communication**: RS485 interface for reliable data transmission
+- **Features**: Voltage, current, power, energy, and frequency measurement
+
+#### ESP32 Wemos D1 Mini
+- **Board Type**: Compact ESP32 development board
+- **Pins**: Suitable for I2C and UART communication
+- **WiFi**: Built-in WiFi for Home Assistant connectivity
+- **Memory**: Sufficient for ESPHome firmware and display operations
+
+#### Meanwell APV-8-5 Power Supply
+- **Output**: 5V DC, 8W maximum power
+- **Efficiency**: High efficiency switching power supply
+- **Protection**: Over voltage and over current protection
+- **Reliability**: Industrial-grade power supply for continuous operation
+
+#### SSD1306 0.96" OLED Display
+- **Resolution**: 128x64 pixels
+- **Interface**: I2C communication
+- **Size**: Compact 0.96" display suitable for enclosure mounting
+- **Visibility**: High contrast OLED for clear reading visibility
+
+### Why These Components?
+
+These specific components were chosen by the original author because they:
+- **Provide reliable performance** in energy monitoring applications
+- **Are readily available** from common electronics suppliers
+- **Work seamlessly together** with the ESPHome firmware
+- **Offer good value** for the performance provided
+- **Have community support** and documentation available
+
+### Alternative Options
+
+While these specific components are recommended, the project is compatible with:
+- **Other JSY energy meter models** with Modbus RTU capability
+- **Various ESP32 development boards** (DevKit, NodeMCU, etc.)
+- **Different 5V power supplies** with adequate current capacity
+- **Other SSD1306 OLED displays** in various sizes
+
 ## 🔌 Pin Connections
 
-### ESP32 Pinout
+### ESP32 Wemos D1 Mini Pinout (Recommended)
+```
+ESP32 Wemos D1 Mini Pin Layout:
+         ┌─────────┐
+     3V3 │ RST   A0 │
+      D0 │ D1    D2 │
+      D3 │ GND   D4 │
+      5V │ 3V3   GND │
+         └─────────┘
+
+GPIO Pin Mapping (Recommended for this project):
+D0  = GPIO16 ← RX for Modbus
+D1  = GPIO22 ← I2C SCL  
+D2  = GPIO21 ← I2C SDA
+D3  = GPIO0  (Boot select - don't use)
+D4  = GPIO2  (Status LED - built-in)
+D5  = GPIO14 (Available for expansion)
+D6  = GPIO12 (Available for expansion)  
+D7  = GPIO13 (Available for expansion)
+D8  = GPIO15 (Available for expansion)
+A0  = ADC0   (Available for analog sensors)
+
+Note: Pin labels on D1 Mini correspond to specific GPIO numbers
+```
+
+Alternative ESP32 DevKit V1 Pinout:
 ```
 ESP32 DevKit V1 Pin Layout:
          ┌─────────┐
@@ -50,18 +131,63 @@ ESP32 DevKit V1 Pin Layout:
 
 | Component | ESP32 Pin | Signal | Notes |
 |-----------|-----------|--------|-------|
-| **Modbus RTU** | | | |
-| RS485 Module | GPIO17 | TX | UART TX |
-| RS485 Module | GPIO16 | RX | UART RX |
-| RS485 Module | 3.3V | VCC | Power |
-| RS485 Module | GND | GND | Ground |
+| **Power Supply** | | | |
+| 5V Power Supply (+) | +5V | VCC | Main ESP32 power |
+| 5V Power Supply (-) | GND | GND | Power ground |
+| **Energy Meter Power** | | | |
+| JSY Meter VCC | 3.3V | VCC | Energy meter power |
+| JSY Meter GND | GND | GND | Energy meter ground |
+| **Modbus RTU Communication** | | | |
+| RS485 Module TX | GPIO16 | RX | Modbus RX (Pin 16) |
+| RS485 Module RX | GPIO17 | TX | Modbus TX (Pin 17) |
+| RS485 Module VCC | 3.3V | VCC | Module power |
+| RS485 Module GND | GND | GND | Module ground |
 | **I2C OLED Display** | | | |
-| OLED SDA | GPIO21 | SDA | I2C Data |
-| OLED SCL | GPIO22 | SCL | I2C Clock |
-| OLED VCC | 3.3V | VCC | Power |
-| OLED GND | GND | GND | Ground |
+| OLED SDA | GPIO21 | SDA | I2C Data (Pin 21) |
+| OLED SCL | GPIO22 | SCL | I2C Clock (Pin 22) |
+| OLED VCC | 3.3V | VCC | Display power |
+| OLED GND | GND | GND | Display ground |
 
 ## 🔌 Detailed Wiring Guide
+
+### Step 0: Power Supply Setup (Critical)
+
+#### Power Distribution Overview
+The original author's design uses a centralized power distribution approach:
+
+```
+Mains AC (L/N) 
+    ↓
+5V Power Supply (Meanwell APV-8-5)
+    ↓
+ESP32 +5V pin (main power)
+    ↓
+ESP32 3.3V pin (internal regulator)
+    ↓
+Energy Meter VCC, OLED VCC, RS485 Module VCC
+```
+
+#### 5V Power Supply Connections
+```
+5V Power Supply (Meanwell APV-8-5):
+     ┌─────────┐
+     │    +    │ ← Mains Line (L)
+     │    -    │ ← Mains Neutral (N)
+     │   5V+   │ ← ESP32 +5V pin
+     │   GND   │ ← ESP32 GND pin
+     └─────────┘
+```
+
+#### ESP32 Power Distribution
+```
+ESP32 Power Rails:
++5V pin  → Powers ESP32 main circuit
+3.3V pin → Powers external devices:
+           • JSY Energy Meter VCC
+           • OLED Display VCC  
+           • RS485 Module VCC
+GND pin  → Common ground for all devices
+```
 
 ### Step 1: RS485 Modbus Setup
 
@@ -87,13 +213,18 @@ RS485 Module Pinout:
 ```
 JSY Energy Meter:
      ┌─────────┐
-     │  Power  │ ← AC Power (L/N)
-     │ Current │ ← CT Clamp connections
+     │   VCC   │ ← ESP32 3.3V pin
+     │   GND   │ ← ESP32 GND pin
+     │    L    │ ← Mains Line (AC Power)
+     │    N    │ ← Mains Neutral (AC Power)
      │   A+    │ ← RS485 Data+
      │   B-    │ ← RS485 Data-
-     │   GND   │ ← Optional ground
+     │   CT1   │ ← Current Transformer 1
+     │   CT2   │ ← Current Transformer 2
      └─────────┘
 ```
+
+**Note**: The energy meter receives its operating power (VCC/GND) from the ESP32's 3.3V rail, while the mains power (L/N) is for measurement purposes only.
 
 ### Step 2: I2C OLED Display Setup
 
@@ -103,8 +234,8 @@ SSD1306 128x64 OLED:
      ┌─────────┐
      │   VCC   │ ← 3.3V (ESP32)
      │   GND   │ ← GND (ESP32)
-     │   SDA   │ ← GPIO21 (ESP32 SDA)
-     │   SCL   │ ← GPIO22 (ESP32 SCL)
+     │   SDA   │ ← GPIO21 (D2) ← I2C SDA
+     │   SCL   │ ← GPIO22 (D1) ← I2C SCL
      └─────────┘
 ```
 
@@ -131,28 +262,28 @@ The default I2C address for SSD1306 is `0x3C`. If you have multiple I2C devices,
 
 ### Step 4: Connect Energy Meter
 1. **Power Off**: Ensure all power is disconnected
-2. **Wire Modbus**: Connect A+ and B- wires to RS485 module
-3. **Wire Power**: Connect AC power wires to meter (if required)
-4. **Wire Current**: Connect current transformers (if used)
+2. **Wire Power**: Connect VCC to ESP32 3.3V, GND to ESP32 GND
+3. **Wire Modbus**: Connect A+ and B- wires to RS485 module
+4. **Wire Mains**: Connect L and N for measurement (high voltage!)
+5. **Wire Current**: Connect current transformers (if used)
 
-## 🏗️ Enclosure Recommendations
+### Step 5: Final Power Distribution Verification
 
-### 3D Printed Enclosure
-- **Material**: ABS or PLA
-- **Dimensions**: Minimum 100mm x 60mm x 30mm
-- **Features Needed**:
-  - Ventilation holes for heat dissipation
-  - Cutouts for OLED display
-  - Access holes for wiring
-  - Mounting holes for PCB
-
-### Commercial Enclosure
-- **Type**: IP65 rated plastic or metal enclosure
-- **Size**: DIN rail mount or wall mount
-- **Features**:
-  - Clear window for OLED display
-  - Cable entry glands
-  - Grounding lug
+#### Complete Power Chain (as per original author design):
+```
+Mains AC (120V/230V)
+    ↓
+5V Power Supply (+5V, GND)
+    ↓
+ESP32 Wemos D1 Mini (+5V, GND pins)
+    ↓
+ESP32 Internal 3.3V Regulator
+    ↓
+ESP32 3.3V pin supplies:
+    ├── JSY Energy Meter (VCC, GND)
+    ├── SSD1306 OLED Display (VCC, GND)
+    └── RS485 Module (VCC, GND)
+```
 
 ## 📏 Calibration and Testing
 
@@ -177,9 +308,10 @@ The default I2C address for SSD1306 is `0x3C`. If you have multiple I2C devices,
 ### Common Problems
 
 #### No Power to ESP32
-- **Check USB cable**: Ensure data cable (not charge-only)
-- **Check voltage**: Verify 3.3V and 5V rails
-- **Check connections**: Verify all power connections
+- **Check 5V power supply**: Verify mains connection and 5V output
+- **Check power supply polarity**: Ensure +5V to ESP32 +5V pin, GND to GND
+- **Check ESP32 3.3V**: Verify internal regulator is working (should power peripherals)
+- **Check connections**: Verify all power connections match the original design
 
 #### OLED Not Displaying
 - **Check I2C address**: Default should be 0x3C
@@ -214,7 +346,6 @@ Before proceeding to software configuration:
 - [ ] Modbus communication working
 - [ ] Energy meter readings are stable
 - [ ] All connections are secure
-- [ ] Enclosure (if used) is properly assembled
 - [ ] Safety measures are in place
 
 Once hardware is verified, proceed to the [Configuration Guide](configuration-guide.md) for ESPHome setup.

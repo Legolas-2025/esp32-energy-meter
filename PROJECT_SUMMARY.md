@@ -43,10 +43,11 @@ esp32-energy-meter/
 ## 🔧 Technical Specifications
 
 ### Hardware Requirements
-- **ESP32 Development Board** (any variant)
-- **JSY Energy Meter** with Modbus RTU over RS485
+- **ESP32 Wemos D1 Mini** (compact ESP32 development board - recommended)
+- **JSY-MK-194G Energy Meter** with Modbus RTU over RS485
 - **SSD1306 128x64 OLED Display** (I2C, address 0x3C)
 - **RS485 to TTL Converter** for Modbus communication
+- **Meanwell APV-8-5 5V 8W Power Supply** for system power
 
 ### Pin Configuration
 ```
@@ -59,8 +60,8 @@ I2C (OLED):
 - SCL: GPIO22
 
 Power:
-- 3.3V: OLED, RS485 module
-- 5V: ESP32 via USB
+- 5V: External power supply to ESP32 +5V pin (main power)
+- 3.3V: ESP32 internal regulator powers OLED, RS485 module, and energy meter
 ```
 
 ### Communication Protocols

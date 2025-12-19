@@ -30,6 +30,7 @@ esp32-energy-meter/
 ├── 📄 README.md                        # Project overview and quick start
 ├── 📄 LICENSE                          # Creative Commons BY-NC-SA 4.0 license
 ├── 📄 PROJECT_SUMMARY.md               # This file - project overview
+├── 📄 CHANGELOG.md                     # Original v.1.0.0 project vs. v2.0.0 updates listed
 ├── 📁 docs/                           # Technical documentation
 │   ├── 📄 hardware-setup.md           # Complete hardware assembly guide
 │   ├── 📄 configuration-guide.md      # ESPHome configuration tutorial

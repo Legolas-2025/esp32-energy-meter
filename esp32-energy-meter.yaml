@@ -127,10 +127,10 @@ display:
       it.printf(it.get_width()/2, 38, id(baloo_32_700), TextAlign::CENTER, "%.1f W", id(power2).state);
 
       // Voltage (slightly below screen due to rotation)
-      it.printf(0, it.get_height() + 12, id(baloo_18_700), TextAlign::BOTTOM_LEFT, "%.1f V", id(voltage2).state);
+      it.printf(0, it.get_height() + 10, id(baloo_18_700), TextAlign::BOTTOM_LEFT, "%.1f V", id(voltage2).state);
 
       // Current (slightly below screen due to rotation)
-      it.printf(it.get_width(), it.get_height() + 12, id(baloo_18_700), TextAlign::BOTTOM_RIGHT, "%.1f A", id(current2).state);
+      it.printf(it.get_width(), it.get_height() + 10, id(baloo_18_700), TextAlign::BOTTOM_RIGHT, "%.1f A", id(current2).state);
 
 
 binary_sensor:

@@ -2,11 +2,13 @@
 
 This guide walks you through configuring ESPHome for your ESP32 Energy Meter, from initial setup to advanced customization.
 
+> **ESPHome 2026.9.0+ required.** This guide reflects the new Modbus sizing model introduced in ESPHome 2026.9.0. If you are upgrading an older configuration, see the [ESPHome 2026.9.0 Migration](#esphome-202690-migration) section below.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 - ESP32 development board with energy meter hardware connected
-- Computer with ESPHome installed
+- Computer with **ESPHome 2026.9.0 or newer** installed
 - WiFi network credentials
 - Home Assistant instance (optional but recommended)
 
@@ -20,7 +22,8 @@ This guide walks you through configuring ESPHome for your ESP32 Energy Meter, fr
 
 ### Method 1: pip (Recommended)
 ```bash
-pip install esphome
+pip install --upgrade esphome
+esphome version   # confirm 2026.9.0 or newer
 ```
 
 ### Method 2: Docker
@@ -36,10 +39,11 @@ docker run -it --rm \
 3. Search for "ESPHome"
 4. Click "Install"
 
+> The HA ESPHome add-on bundles its own ESPHome version. Make sure the add-on is updated to a release that ships ESPHome **≥ 2026.9.0** before validating this configuration.
+
 ## 🔐 Configuring Secrets
 
 Create a `secrets.yaml` file in your project directory:
-
 ```yaml
 # WiFi Configuration
 wifi_ssid: "YOUR_WIFI_NETWORK_NAME"
@@ -93,12 +97,10 @@ esp32:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
   manual_ip:
     static_ip: 192.168.1.100  # Choose available IP
-    gateway: 192.168.1.1      # Your router IP
+    gateway: 192.168.1.1     # Your router IP
     subnet: 255.255.255.0
-
   ap:
     ssid: "ESP32-Energy-Meter Fallback Hotspot"
     password: "CHANGE_THIS_PASSWORD"
@@ -128,13 +130,16 @@ uart:
 
 modbus:
   id: modbus1
-
-modbus_controller:
-  - id: jsymk
-    address: 0x1              # JSY meter address
-    modbus_id: modbus1
-    update_interval: 3s       # Measurement update interval
-    command_throttle: 50ms    # Min time between commands
+  # `turnaround_time` (on the `modbus:` hub) replaced the deprecated
+  # `command_throttle` on `modbus_controller` in ESPHome 2026.9.0.
+  turnaround_time: 50ms
+  modbus_controller:
+    - id: jsymk
+      address: 0x1               # JSY meter address
+      modbus_id: modbus1
+      update_interval: 3s        # Measurement update interval
+      # NOTE: do NOT set `command_throttle` here — it is ignored and will
+      #       emit a deprecation warning. Use `turnaround_time` above.
 ```
 
 ### I2C Display Setup
@@ -170,18 +175,15 @@ display:
         it.clear();
         return;
       }
-      
       // Clear and draw content
       it.clear();
       it.print(-1, -4, id(baloo_18_500), "Energy Meter");
-      
       // WiFi status
       if(id(connection_status).state == 1) {
         it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue63e");
       } else {
         it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue648");
       }
-      
       // Power display
       it.printf(it.get_width()/2, 38, id(baloo_32_700), TextAlign::CENTER, "%.1f W", id(power2).state);
       it.printf(0, it.get_height() + 12, id(baloo_18_700), TextAlign::BOTTOM_LEFT, "%.1f V", id(voltage2).state);
@@ -208,6 +210,11 @@ sensor:
 ```
 
 ### Energy Meter Sensors
+
+> **ESPHome ≥ 2026.9.0:** register count is derived from `value_type` (e.g.
+> `U_DWORD` ⇒ 4 bytes / 2 registers). The `register_count` and `response_size`
+> keys that used to appear here have been **removed** — leave them out.
+
 ```yaml
 sensor:
   # Power measurement (Channel 2 - primary)
@@ -220,12 +227,10 @@ sensor:
     address: 0x0052
     unit_of_measurement: "W"
     register_type: holding
-    value_type: U_DWORD
+    value_type: U_DWORD        # → automatically reads 2 registers / 4 bytes
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
   # Voltage measurement
   - platform: modbus_controller
@@ -241,8 +246,6 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
   # Current measurement
   - platform: modbus_controller
@@ -255,11 +258,9 @@ sensor:
     unit_of_measurement: "A"
     register_type: holding
     value_type: U_DWORD
-    accuracy_decimals: 4  # Increased for low current readings
+    accuracy_decimals: 4            # Increased for low current readings
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 ```
 
 ## 🚀 Uploading Configuration
@@ -311,12 +312,15 @@ ESPHome will create entities like:
 
 ### Custom Update Intervals
 ```yaml
-modbus_controller:
-  - id: jsymk
-    address: 0x1
-    modbus_id: modbus1
-    update_interval: 2s       # Faster updates
-    command_throttle: 25ms    # Reduced throttle
+modbus:
+  id: modbus1
+  turnaround_time: 25ms           # Reduced pause between commands
+
+  modbus_controller:
+    - id: jsymk
+      address: 0x1
+      modbus_id: modbus1
+      update_interval: 2s         # Faster updates
 ```
 
 ### Display Customization
@@ -326,8 +330,8 @@ display:
     model: "SSD1306 128x64"
     address: 0x3C
     id: oled
-    rotation: 0°              # Normal orientation
-    update_interval: 1s       # Faster display updates
+    rotation: 0°                  # Normal orientation
+    update_interval: 1s           # Faster display updates
     lambda: !lambda |-
       // Custom display logic here
       it.clear();
@@ -340,11 +344,11 @@ sensor:
   - platform: modbus_controller
     # ... other config ...
     filters:
-      - multiply: 0.0001      # Scale factor
-      - offset: -5.0          # Calibration offset
+      - multiply: 0.0001           # Scale factor
+      - offset: -5.0               # Calibration offset
       - exponential_moving_average:
-          alpha: 0.2          # Smooth readings
-      - heartbeat: 10s        # Periodic updates
+          alpha: 0.2               # Smooth readings
+      - heartbeat: 10s             # Periodic updates
 ```
 
 ## 📊 Performance Optimization
@@ -356,7 +360,7 @@ esp32:
   framework:
     type: esp-idf
   psram:
-    mode: octal              # Enable PSRAM if available
+    mode: octal                    # Enable PSRAM if available
 ```
 
 ### WiFi Optimization
@@ -364,19 +368,111 @@ esp32:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  fast_connect: true         # Skip scanning
-  output_power: 10.5         # Adjust power level
+  fast_connect: true               # Skip scanning
+  output_power: 10.5               # Adjust power level
 ```
 
 ### Update Optimization
 ```yaml
-modbus_controller:
-  - id: jsymk
-    address: 0x1
-    modbus_id: modbus1
-    update_interval: 5s      # Balance responsiveness vs. stability
-    command_throttle: 100ms  # Prevent bus overload
+modbus:
+  id: modbus1
+  turnaround_time: 100ms           # Prevent bus overload
+
+  modbus_controller:
+    - id: jsymk
+      address: 0x1
+      modbus_id: modbus1
+      update_interval: 5s          # Balance responsiveness vs. stability
 ```
+
+## 🆕 ESPHome 2026.9.0 Migration
+
+This project was updated to be compatible with **ESPHome 2026.9.0**, which changed how `modbus_controller` sensors are sized and paced.
+
+### What changed
+
+| Setting | Old behaviour (≤ 2026.x) | New behaviour (≥ 2026.9.0) |
+|---|---|---|
+| Number of registers read | Explicit `register_count: N` per sensor | **Derived from `value_type`** (e.g. `U_DWORD` ⇒ 2 registers). `register_count` has been removed. |
+| Per-sensor byte size | `response_size: N` on every sensor | Only valid for `RAW` values and text sensors. For typed sensors (`U_DWORD`, `S_WORD`, …) the size is implicit in the type. |
+| Inter-command spacing | `command_throttle: 50ms` on `modbus_controller` | Moved to `turnaround_time: 50ms` on the `modbus:` hub. The old key still parses but **has no effect** and will be removed in 2027.2.0. |
+
+### Before / after — typical sensor
+
+```yaml
+# Before (ESPHome < 2026.9.0)
+- platform: modbus_controller
+  modbus_controller_id: jsymk
+  id: power2
+  address: 0x0052
+  register_type: holding
+  value_type: U_DWORD
+  filters:
+    - multiply: 0.0001
+  register_count: 1        # ← removed
+  response_size: 4         # ← removed for non-RAW / non-text sensors
+```
+
+```yaml
+# After (ESPHome ≥ 2026.9.0)
+- platform: modbus_controller
+  modbus_controller_id: jsymk
+  id: power2
+  address: 0x0052
+  register_type: holding
+  value_type: U_DWORD
+  filters:
+    - multiply: 0.0001
+  # `value_type: U_DWORD` ⇒ 2 registers / 4 bytes automatically.
+```
+
+### Before / after — command pacing
+
+```yaml
+# Before (ESPHome < 2026.9.0)
+modbus:
+  id: modbus1
+  modbus_controller:
+    - id: jsymk
+      command_throttle: 50ms
+```
+
+```yaml
+# After (ESPHome ≥ 2026.9.0)
+modbus:
+  id: modbus1
+  turnaround_time: 50ms                 # pacing moves to the hub
+  modbus_controller:
+    - id: jsymk
+      # command_throttle removed
+```
+
+### Special cases
+
+- **Reading more registers than `value_type` implies** (e.g. you want one
+  request that covers two adjacent sensors): add `reuse_previous_range: true`
+  on the *next* sensor instead of bumping `register_count`.
+- **RAW or text block reads**: keep `response_size` and set it to the byte
+  count of the payload.
+- **Multi-register writes**: set `use_write_multiple: true` on the write
+  sensor.
+
+### Upgrading an existing install
+
+1. Upgrade ESPHome: `pip install --upgrade esphome` (and update the Home
+   Assistant ESPHome add-on, if you use it).
+2. Pull the updated `esp32-energy-meter.yaml` from this repository.
+3. Validate before flashing:
+   ```bash
+   esphome config esp32-energy-meter.yaml
+   ```
+4. Flash:
+   ```bash
+   esphome run esp32-energy-meter.yaml
+   ```
+   Wiring, secrets, and Home Assistant entities are unchanged.
+
+See the [ESPHome Modbus controller docs](https://esphome.io/components/modbus_controller/) for the full reference.
 
 ## 🐛 Troubleshooting
 
@@ -385,7 +481,10 @@ modbus_controller:
 #### Compilation Errors
 - **Check YAML syntax**: Use online YAML validators
 - **Verify sensor IDs**: Ensure all referenced IDs exist
-- **Update ESPHome**: `pip install --upgrade esphome`
+- **Update ESPHome**: `pip install --upgrade esphome` (must be ≥ 2026.9.0)
+
+#### `register_count has been removed` validation error
+See the dedicated entry in [`troubleshooting.md`](troubleshooting.md#validation-error-register_count-has-been-removed).
 
 #### Connection Issues
 - **Check IP conflicts**: Use static IP to avoid DHCP issues
@@ -393,7 +492,7 @@ modbus_controller:
 - **Check firewall**: Ensure device can connect to local network
 
 #### Sensor Reading Issues
-- **Check Modbus address**: Default is usually 0x1
+- **Check Modbus address**: Default is usually `0x1`
 - **Verify wiring**: Check RS485 A+ and B- connections
 - **Check update intervals**: Don't set too aggressive
 
@@ -440,11 +539,11 @@ uart:
 
 modbus:
   id: modbus1
-
-modbus_controller:
-  - id: jsymk
-    address: 0x1
-    modbus_id: modbus1
+  turnaround_time: 50ms
+  modbus_controller:
+    - id: jsymk
+      address: 0x1
+      modbus_id: modbus1
 
 sensor:
   - platform: modbus_controller
@@ -469,8 +568,8 @@ sensor:
 
 After basic configuration:
 1. [Hardware Setup](hardware-setup.md) - If not already completed
-2. [Home Assistant Integration](wiki/Home-Assistant-Integration.md)
-3. [Advanced Features](wiki/Advanced-Features.md)
+2. [Home Assistant Integration](Home-Assistant-Integration.md)
+3. [Advanced Features](Advanced-Features.md)
 4. [Troubleshooting](troubleshooting.md)
 
 For specific hardware issues, refer to the [Hardware Setup Guide](hardware-setup.md).

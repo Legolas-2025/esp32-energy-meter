@@ -1,9 +1,8 @@
 # ESP32 Smart Energy Meter with OLED Display
 ![ESP32 Energy Meter](docs/FLGRJWZM23B7UJV.jpg)
-
 ![ESP32 Energy Meter](https://img.shields.io/badge/ESP32-Compatible-green)
 ![Home Assistant](https://img.shields.io/badge/Home-Assistant-blue)
-![ESPHome](https://img.shields.io/badge/ESPHome-Latest-orange)
+![ESPHome](https://img.shields.io/badge/ESPHome-%3E=2026.9.0-orange)
 ![License](https://img.shields.io/badge/License-CC--BY--NC--SA--4.0-red)
 
 A DIY smart energy monitoring system based on ESP32 with ESPHome firmware, featuring real-time power monitoring, OLED display, and Home Assistant integration.
@@ -12,8 +11,20 @@ A DIY smart energy monitoring system based on ESP32 with ESPHome firmware, featu
 
 This project provides a comprehensive energy monitoring solution that measures AC power consumption in real-time. The system displays power, voltage, and current on a local OLED screen while simultaneously sending data to Home Assistant for detailed analytics and automation.
 
-### Key Features
+## 📋 ESPHome Compatibility
 
+> **Requires ESPHome 2026.9.0 or newer.**
+>
+> The current configuration uses the new Modbus sizing model introduced in 2026.9.0 (register count is derived from `value_type`, and `command_throttle` has moved to `turnaround_time` on the `modbus:` hub). Earlier versions of ESPHome will reject the file with a `register_count has been removed` validation error.
+>
+> To install or upgrade ESPHome:
+> ```bash
+> pip install --upgrade esphome
+> ```
+>
+> See [`docs/configuration-guide.md`](docs/configuration-guide.md#esphome-202690-migration) for the full migration notes and [`CHANGELOG.md`](CHANGELOG.md) for what changed in `2.1.0`.
+
+### Key Features
 - **Dual Channel Monitoring**: Monitors two separate electrical circuits
 - **Real-time Display**: 128x64 OLED display with WiFi status indicator
 - **Home Assistant Integration**: Seamless integration with energy dashboards
@@ -26,8 +37,8 @@ This project provides a comprehensive energy monitoring solution that measures A
 
 This project is based on the excellent work by **Giovanni Aggiustatutto** and his original Instructable:
 
-**Original Project**: [DIY Smart Energy Meter With ESP32 + Home Assistant](https://www.instructables.com/DIY-Smart-Energy-Meter-With-ESP32-Home-Assistant/)  
-**Author**: Giovanni Aggiustatutto  
+**Original Project**: [DIY Smart Energy Meter With ESP32 + Home Assistant](https://www.instructables.com/DIY-Smart-Energy-Meter-With-ESP32-Home-Assistant/)
+**Author**: Giovanni Aggiustatutto
 **License**: Creative Commons Attribution-NonCommercial-ShareAlike (BY-NC-SA 4.0)
 
 The original project provided the foundation for this enhanced version, which adds several improvements including:
@@ -35,6 +46,7 @@ The original project provided the foundation for this enhanced version, which ad
 - OLED burn-in protection
 - Improved display formatting
 - Optimized update intervals
+- ESPHome 2026.9.0 compatibility (`register_count` / `response_size` removed, `turnaround_time` added)
 
 ## 📋 Hardware Requirements
 
@@ -58,15 +70,16 @@ The original project provided the foundation for this enhanced version, which ad
 ## 🔧 Installation & Setup
 
 ### 1. Hardware Assembly
-
 Refer to our detailed [Hardware Guide](docs/hardware-setup.md) for complete assembly instructions.
 
 ### 2. ESPHome Configuration
 
-1. **Install ESPHome**:
+1. **Install ESPHome (2026.9.0 or newer)**:
    ```bash
-   pip install esphome
+   pip install --upgrade esphome
+   esphome version
    ```
+   Confirm the reported version is `2026.9.0` or later before continuing.
 
 2. **Configure Secrets**:
    Create a `secrets.yaml` file:
@@ -81,7 +94,6 @@ Refer to our detailed [Hardware Guide](docs/hardware-setup.md) for complete asse
    ```
 
 ### 3. Home Assistant Integration
-
 1. **Auto-Discovery**: ESPHome devices are automatically discovered by Home Assistant
 2. **Manual Addition**: If auto-discovery fails, use ESP32's IP address
 3. **Energy Dashboard**: Add sensors to your Home Assistant energy configuration
@@ -90,7 +102,7 @@ Refer to our detailed [Hardware Guide](docs/hardware-setup.md) for complete asse
 
 ### Channel 1 & Channel 2
 - **Voltage** (V) - Line voltage measurement
-- **Current** (A) - Current flow measurement  
+- **Current** (A) - Current flow measurement
 - **Power** (W) - Real-time power consumption
 - **Energy** (kWh) - Total energy consumption
 - **Power Factor** - Power quality indicator
@@ -117,7 +129,8 @@ Refer to our detailed [Hardware Guide](docs/hardware-setup.md) for complete asse
 
 ### Performance Optimizations
 - **Optimized Update Intervals**: 3-second sensor updates for responsive monitoring
-- **Modbus Command Throttling**: Efficient communication with energy meters
+- **Modbus Command Pacing**: Configured via `turnaround_time` on the `modbus:` hub
+  (replaces the deprecated `command_throttle` on `modbus_controller`)
 - **Memory Management**: Optimized font loading and display rendering
 
 ## 🏠 Home Assistant Integration
@@ -131,7 +144,7 @@ The device automatically appears in Home Assistant and all sensors are ready for
 power:
   - sensor.esp32_energy_meter_power_2
 voltage:
-  - sensor.esp32_energy_meter_voltage_2  
+  - sensor.esp32_energy_meter_voltage_2
 current:
   - sensor.esp32_energy_meter_current_2
 energy:
@@ -144,20 +157,20 @@ energy:
 - **Device Control**: Automatically control appliances based on consumption
 
 ## 📖 Documentation
-
 - **[Hardware Setup Guide](docs/hardware-setup.md)** - Complete assembly instructions
 - **[Configuration Guide](docs/configuration-guide.md)** - ESPHome configuration tutorial
+  (includes [ESPHome 2026.9.0 migration notes](docs/configuration-guide.md#esphome-202690-migration))
 - **[Home Assistant Integration](docs/Home-Assistant-Integration.md)** - HA setup and usage
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+  (includes [`register_count has been removed` fix](docs/troubleshooting.md#validation-error-register_count-has-been-removed))
 - **[API Reference](docs/api-reference.md)** - Complete sensor documentation
 - **[Advanced Features Guide](docs/Advanced-Features.md)** - Advanced customization options
+- **[CHANGELOG](CHANGELOG.md)** - Release history
 
 ## ⚠️ Safety Warning
-
 ⚠️ **HIGH VOLTAGE**: This project involves working with mains electricity. Always disconnect power before making connections and use appropriate safety measures. The authors are not responsible for any damage or injury resulting from the use of this project.
 
 ## 📜 License
-
 This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
 
 ### What you can do:
@@ -175,20 +188,16 @@ This project is licensed under the **Creative Commons Attribution-NonCommercial-
 - 📋 **Share-Alike**: License derivatives under the same terms
 
 ## 🙏 Acknowledgments
-
 - **Giovanni Aggiustatutto** - Original project concept and implementation
 - **ESPHome Community** - Excellent firmware and documentation
 - **Home Assistant Community** - Platform and integration support
 - **JSY Energy Meter Manufacturer** - Hardware specifications
 
 ## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/your-repo/esp32-energy-meter/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/esp32-energy-meter/discussions)
-- **Documentation**: [Project Wiki](https://github.com/your-repo/esp32-energy-meter/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Legolas-2025/esp32-energy-meter/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Legolas-2025/esp32-energy-meter/discussions)
 
 ---
-
 **Made with ❤️ for the DIY Energy Monitoring Community**
 
 *This project promotes energy efficiency and helps users understand their consumption patterns for a more sustainable future.*

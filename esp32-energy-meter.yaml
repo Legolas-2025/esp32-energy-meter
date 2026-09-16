@@ -22,7 +22,6 @@ ota:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
   manual_ip:
     # Set this to the IP of the ESP
     static_ip: 192.168.1.XXX
@@ -37,7 +36,7 @@ wifi:
     password: "CHANGE_THIS_PASSWORD"
 
 captive_portal:
-    
+
 #JSY energy meter protocol
 uart:
   id: mod_bus
@@ -48,14 +47,16 @@ uart:
 
 modbus:
   id: modbus1
-
-modbus_controller:
-  - id: jsymk
-    #modbus device address
-    address: 0x1
-    modbus_id: modbus1
-    update_interval: 3s
-    command_throttle: 50ms
+  # `turnaround_time` replaces the deprecated `command_throttle` from the
+  # modbus_controller hub (introduced as the command spacing mechanism
+  # required by ESPHome >= 2026.9.0).
+  turnaround_time: 50ms
+  modbus_controller:
+    - id: jsymk
+      #modbus device address
+      address: 0x1
+      modbus_id: modbus1
+      update_interval: 3s
 
 i2c:
   sda: 21
@@ -75,7 +76,7 @@ font:
       weight: 700
     id: baloo_32_700
     size: 32
-  
+
   - file:
       type: gfonts
       family: Baloo+Bhaijaan+2
@@ -102,22 +103,22 @@ display:
     lambda: !lambda |-
       // Time integration for burn-in protection
       time_t now = id(homeassistant_time).now().timestamp;
-      
+
       // Clear screen every 30 minutes to prevent OLED burn-in
-      if (now % 1800 == 0) {  // Every 30 minutes
+      if (now % 1800 == 0) { // Every 30 minutes
         it.clear();
-        return;  // Exit early to prevent drawing during clear
+        return; // Exit early to prevent drawing during clear
       }
-      
+
       // Clear screen before drawing new content
       it.clear();
-      
+
       // Energy Meter title
       it.print(-1, -4, id(baloo_18_500), "Energy Meter");
 
       // WiFi status
       if(id(connection_status).state == 1) {
-        it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue63e");        
+        it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue63e");
       }
       else {
         it.print(it.get_width(), 0, id(icons_18), TextAlign::TOP_RIGHT, "\ue648");
@@ -132,25 +133,26 @@ display:
       // Current (slightly below screen due to rotation)
       it.printf(it.get_width(), it.get_height() + 10, id(baloo_18_700), TextAlign::BOTTOM_RIGHT, "%.1f A", id(current2).state);
 
-
 binary_sensor:
-# Connection status - enhanced WiFi signal strength check
+  # Connection status - enhanced WiFi signal strength check
   - platform: template
     name: "WiFi Connection Status"
     id: connection_status
     lambda: !lambda
-      return id(wifi_signal_strength).state > -70;  // Connected if signal strength > -70 dBm
-
+      return id(wifi_signal_strength).state > -70; // Connected if signal strength > -70 dBm
 
 sensor:
-# WiFi Signal Strength sensor for accurate connection monitoring
+  # WiFi Signal Strength sensor for accurate connection monitoring
   - platform: wifi_signal
     name: "WiFi Signal Strength"
     id: wifi_signal_strength
     update_interval: 10s
     unit_of_measurement: "dBm"
 
-# First channel voltage
+  # First channel voltage
+  # NOTE: ESPHome >= 2026.9.0 derives register count from `value_type`
+  # (U_DWORD = 4 bytes / 2 registers). `register_count` and `response_size`
+  # have been removed from non-RAW / non-text sensors.
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: voltage1
@@ -164,10 +166,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# First channel current
+  # First channel current
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: current1
@@ -181,10 +181,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# First channel power
+  # First channel power
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: power1
@@ -198,10 +196,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# First channel energy
+  # First channel energy
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: energy1
@@ -216,10 +212,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# First channel power factor
+  # First channel power factor
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: powerfactor1
@@ -232,10 +226,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.001
-    register_count: 1
-    response_size: 4
 
-# First channel negative active energy
+  # First channel negative active energy
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: negativeactiveenergy1
@@ -250,10 +242,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# First channel current direction
+  # First channel current direction
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: direction1
@@ -267,10 +257,8 @@ sensor:
     bitmask: 0X01000000
     filters:
       - multiply: 1
-    register_count: 1
-    response_size: 4
 
-# Frequency
+  # Frequency
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: frequency
@@ -284,10 +272,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
-    register_count: 1
-    response_size: 4
 
-# Second channel voltage
+  # Second channel voltage
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: voltage2
@@ -301,10 +287,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# Second channel current
+  # Second channel current
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: current2
@@ -318,10 +302,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# Second channel power
+  # Second channel power
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: power2
@@ -335,10 +317,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# Second channel energy
+  # Second channel energy
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: energy2
@@ -353,10 +333,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# Second channel power factor
+  # Second channel power factor
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: powerfactor2
@@ -369,10 +347,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.001
-    register_count: 1
-    response_size: 4
 
-# Second channel negative active energy
+  # Second channel negative active energy
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: negativeactiveenergy2
@@ -387,22 +363,18 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.0001
-    register_count: 1
-    response_size: 4
 
-# Second channel current direction
+  # Second channel current direction
   - platform: modbus_controller
     modbus_controller_id: jsymk
     id: direction2
     #name: "Current Direction 2"
     icon: mdi:arrow-right
     device_class: energy
-    address: 0x004E
+    address: 0x0056
     register_type: holding
     value_type: U_DWORD
     accuracy_decimals: 0
     bitmask: 0X00010000
     filters:
       - multiply: 1
-    register_count: 1
-    response_size: 4

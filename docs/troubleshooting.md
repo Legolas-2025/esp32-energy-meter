@@ -6,9 +6,8 @@ This comprehensive guide helps you diagnose and resolve common issues with the E
 
 ### System Health Check
 Before diving into specific issues, verify these basics:
-
 - [ ] ESP32 powers on and boots successfully
-- [ ] WiFi connection is established  
+- [ ] WiFi connection is established
 - [ ] OLED display shows "Energy Meter" title
 - [ ] Home Assistant integration is working
 - [ ] Energy meter readings are stable
@@ -18,6 +17,15 @@ Before diving into specific issues, verify these basics:
 2. **Verify Connections**: Ensure all hardware connections are secure
 3. **Test Individual Components**: Test ESP32, OLED, and energy meter separately
 4. **Check Power Supply**: Verify stable power to all components
+
+### ESPHome version
+Always report your ESPHome version when troubleshooting:
+```bash
+esphome version
+```
+This project requires **ESPHome 2026.9.0 or newer**. See
+[`docs/configuration-guide.md`](configuration-guide.md#esphome-202690-migration)
+for the migration notes.
 
 ## ⚡ Power and Boot Issues
 
@@ -146,7 +154,7 @@ display:
 - **I2C Address**: Default is 0x3C, try 0x3D if multiple I2C devices
 - **Wiring**: Verify SDA (GPIO21) and SCL (GPIO22) connections
 - **Power**: Ensure 3.3V and GND connections to OLED
-- **Library**: Update ESPHome to latest version
+- **Library**: Update ESPHome to a version ≥ 2026.9.0
 
 ```bash
 # Test I2C device detection
@@ -196,7 +204,7 @@ display:
 time:
   - platform: homeassistant
     id: homeassistant_time
-    
+
 # Verify burn-in protection logic
 lambda: !lambda |-
   time_t now = id(homeassistant_time).now().timestamp;
@@ -244,13 +252,17 @@ esphome logs esp32-energy-meter.yaml --serial /dev/ttyUSB0
 
 **Solutions**:
 ```yaml
-# Optimize communication settings
-modbus_controller:
-  - id: jsymk
-    address: 0x1
-    modbus_id: modbus1
-    update_interval: 5s        # Slower, more reliable
-    command_throttle: 100ms    # More time between commands
+# Optimize communication settings (ESPHome >= 2026.9.0)
+modbus:
+  id: modbus1
+  turnaround_time: 100ms          # More time between commands (on the `modbus:` hub)
+
+  modbus_controller:
+    - id: jsymk
+      address: 0x1
+      modbus_id: modbus1
+      update_interval: 5s          # Slower, more reliable
+      # NOTE: `command_throttle` was deprecated; use `turnaround_time` above.
 ```
 
 ### Incorrect Sensor Values
@@ -321,7 +333,7 @@ sensor:
 **Common Issues**:
 - **YAML Syntax**: Validate YAML file
 - **Sensor IDs**: Ensure all referenced IDs exist
-- **Dependencies**: Update ESPHome to latest version
+- **Dependencies**: Update ESPHome to **≥ 2026.9.0**
 
 ```bash
 # Validate configuration
@@ -330,6 +342,87 @@ esphome config esp32-energy-meter.yaml
 # Clean build
 esphome run esp32-energy-meter.yaml --clean
 ```
+
+### Validation Error: `register_count` has been removed
+
+**Symptoms**: Starting with **ESPHome 2026.9.0**, `esphome config` (or
+`esphome run`) fails with:
+
+```
+Failed config
+sensor.modbus_controller: [source esp32-energy-meter.yaml:156]
+  'register_count' has been removed; the number of registers to read is
+  now derived from 'value_type' (or 'response_size' for RAW values and
+  text sensors). To make one request span extra registers up to the next
+  sensor, set 'reuse_previous_range: true' on the NEXT sensor instead;
+  for RAW or text block reads set 'response_size' to the byte count; to
+  force multi-register writes set 'use_write_multiple: true'.
+```
+
+(You may also see a `WARNING [modbus_controller] 'command_throttle' no
+longer has any effect and will be removed in 2027.2.0. Command spacing
+is handled by the 'modbus' component - use 'turnaround_time' there
+instead.`)
+
+**Diagnosis**: The configuration was written for ESPHome **< 2026.9.0**
+and still uses two deprecated keys:
+
+1. `register_count` on every `modbus_controller` sensor
+2. `response_size` on every typed (non-RAW, non-text) sensor
+3. `command_throttle` on the `modbus_controller` hub
+
+**Fix**: Upgrade the configuration to the new sizing model.
+
+**Before** (ESPHome < 2026.9.0):
+```yaml
+modbus_controller:
+  - id: jsymk
+    address: 0x1
+    modbus_id: modbus1
+    update_interval: 3s
+    command_throttle: 50ms      # ← deprecated
+
+sensor:
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: power2
+    address: 0x0052
+    register_type: holding
+    value_type: U_DWORD
+    filters:
+      - multiply: 0.0001
+    register_count: 1           # ← removed
+    response_size: 4            # ← removed for typed sensors
+```
+
+**After** (ESPHome ≥ 2026.9.0):
+```yaml
+modbus:
+  id: modbus1
+  turnaround_time: 50ms        # ← pacing moves to the `modbus:` hub
+  modbus_controller:
+    - id: jsymk
+      address: 0x1
+      modbus_id: modbus1
+      update_interval: 3s
+
+sensor:
+  - platform: modbus_controller
+    modbus_controller_id: jsymk
+    id: power2
+    address: 0x0052
+    register_type: holding
+    value_type: U_DWORD         # → 4 bytes / 2 registers automatically
+    filters:
+      - multiply: 0.0001
+```
+
+**Apply the fix** to every sensor that still has `register_count` /
+`response_size` lines. In this repository the equivalent changes are
+already applied — simply pull the latest `esp32-energy-meter.yaml`.
+
+The full migration walkthrough lives in
+[`configuration-guide.md`](configuration-guide.md#esphome-202690-migration).
 
 ### OTA Update Fails
 **Symptoms**: Cannot update firmware over WiFi
@@ -439,7 +532,7 @@ uart:
 ### Information to Include
 - **ESP32 board type** and specifications
 - **Energy meter model** and version
-- **ESPHome version** (`esphome version`)
+- **ESPHome version** (`esphome version`) — must be ≥ 2026.9.0
 - **Home Assistant version**
 - **Relevant log excerpts**
 - **Configuration file** (with secrets removed)
@@ -469,11 +562,11 @@ uart:
 sensor:
   - platform: uptime
     name: "Uptime"
-    
+
   - platform: wifi_signal
     name: "WiFi Signal"
     update_interval: 60s
-    
+
   - platform: template
     name: "Free Memory"
     lambda: !lambda
